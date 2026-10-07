@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>StoryCraft Studio - プロット支援Webアプリ プロトタイプ</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #121214;
+      --panel-bg: #1e1e24;
+      --accent: #6366f1;
+      --text: #e2e8f0;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background: #0f172a;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .chapter-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel-bg);
+      padding: 5px 15px;
+      border-radius: 20px;
+    }
+    .app-container {
+      display: grid;
+      grid-template-columns: 240px 1fr 300px;
+      flex: 1;
+      overflow: hidden;
+    }
+    .panel {
+      background: var(--panel-bg);
+      padding: 15px;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+    .right-panel {
+      border-right: none;
+      border-left: 1px solid var(--border);
+    }
+    .view-tabs {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      background: #0f172a;
+      color: #94a3b8;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .main-canvas {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .view-content {
+      display: none;
+      height: 100%;
+      background: #00000040;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 15px;
+    }
+    .view-content.active { display: block; }
+    .relation-node {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: 100%;
+    }
+    .card-char {
+      width: 120px;
+      padding: 15px;
+      background: #1e293b;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .relation-line {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+    .relation-line::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 10%; right: 10%;
+      height: 2px;
+      background: var(--accent);
+      z-index: 1;
+    }
+    .relation-label {
+      position: relative;
+      z-index: 2;
+      background: #0f172a;
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--accent);
+      display: inline-block;
+      font-size: 0.85rem;
+    }
+    .kanban {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      height: 100%;
+    }
+    .kanban-col {
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .kanban-card {
+      background: #1e293b;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      border-left: 3px solid var(--accent);
+    }
+    .card-trigger {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+    .drawn-card {
+      background: #1e293b;
+      border: 1px solid #a855f7;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h2>StoryCraft Studio <span style="font-size: 0.7rem; color: #94a3b8;">Prototype</span></h2>
+    <div class="chapter-selector">
+      <label>現在の章:</label>
+      <input type="range" id="chapterSlider" min="1" max="3" value="1" onchange="updateChapter(this.value)">
+      <span id="chapterLabel" style="font-weight: bold; width: 40px;">第1章</span>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <div class="panel">
+      <h3>章・構成一覧</h3>
+      <ul style="list-style: none; margin-top: 10px; font-size: 0.9rem;">
+        <li style="padding: 8px; background: #334155; border-radius: 4px; margin-bottom: 5px;">第1章: 接触と予兆</li>
+        <li style="padding: 8px; margin-bottom: 5px;">第2章: 対立の激化</li>
+        <li style="padding: 8px; margin-bottom: 5px;">第3章: 決断と結末</li>
+      </ul>
+    </div>
+
+    <div class="main-canvas">
+      <div class="view-tabs">
+        <button class="tab-btn active" onclick="switchView('relation')">1. 動的相関図</button>
+        <button class="tab-btn" onclick="switchView('emotion')">2. 感情波形</button>
+        <button class="tab-btn" onclick="switchView('foreshadow')">3. 伏線追跡ボード</button>
+      </div>
+
+      <div id="view-relation" class="view-content active">
+        <div class="relation-node">
+          <div class="card-char">
+            <h4 id="char1">主人公 (アキラ)</h4>
+          </div>
+          <div class="relation-line">
+            <span class="relation-label" id="relationText">信頼・協力関係</span>
+          </div>
+          <div class="card-char">
+            <h4 id="char2">相棒 (レン)</h4>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-emotion" class="view-content">
+        <canvas id="emotionChart"></canvas>
+      </div>
+
+      <div id="view-foreshadow" class="view-content">
+        <div class="kanban">
+          <div class="kanban-col">
+            <h4>設置（Plant）</h4>
+            <div class="kanban-card">古い鍵（第1章）</div>
+          </div>
+          <div class="kanban-col">
+            <h4>示唆（Hint）</h4>
+            <div class="kanban-card" id="hintCard">あざの謎（第2章予定）</div>
+          </div>
+          <div class="kanban-col">
+            <h4>回収（Payoff）</h4>
+            <div class="kanban-card">写真の偽装（第3章予定）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel right-panel">
+      <h3>スパイス提案</h3>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 10px;">展開に詰まったときに試すアイデア枠</p>
+      <button class="card-trigger" onclick="drawCard()">ランダム・ハプニングカードを引く</button>
+      
+      <div id="cardResult" class="drawn-card" style="display: none;">
+        <strong id="cardTitle" style="color: #c084fc; display: block; margin-bottom: 5px;"></strong>
+        <span id="cardDesc"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chapterData = {
+      1: { relation: "信頼・協力関係", hintStatus: "あざの謎（第2章予定）" },
+      2: { relation: "疑念・不信感", hintStatus: "あざの謎（進行中）" },
+      3: { relation: "決裂・対立", hintStatus: "あざの謎（回収完了）" }
+    };
+
+    function updateChapter(val) {
+      document.getElementById('chapterLabel').innerText = `第${val}章`;
+      document.getElementById('relationText').innerText = chapterData[val].relation;
+      
+      const relLabel = document.getElementById('relationText');
+      relLabel.style.borderColor = val == 3 ? '#ef4444' : '#6366f1';
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      
+      document.getElementById(`view-${viewName}`).classList.add('active');
+      event.target.classList.add('active');
+
+      if (viewName === 'emotion') {
+        renderChart();
+      }
+    }
+
+    let chartInstance = null;
+    function renderChart() {
+      if (chartInstance) chartInstance.destroy();
+      const ctx = document.getElementById('emotionChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['第1章', '第2章', '第3章'],
+          datasets: [{
+            label: '主人公 (アキラ)',
+            data: [50, -20, 80],
+            borderColor: '#6366f1',
+            tension: 0.3
+          }, {
+            label: '相棒 (レン)',
+            data: [40, 60, -90],
+            borderColor: '#ef4444',
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: -100, max: 100, grid: { color: '#334155' } },
+            x: { grid: { color: '#334155' } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+
+    const cards = [
+      { title: "環境の変調", desc: "突然の豪雨または停電により、その場から移動できなくなる。" },
+      { title: "第三者の介入", desc: "無関係だと思っていた人物が、決定的な証拠を持って現れる。" },
+      { title: "アイテムの破損", desc: "頼りにしていた鍵や通信機器が故障・破損する。" },
+      { title: "心理的打撃", desc: "信頼していた人物から、冷酷な本音を告げられる。" }
+    ];
+
+    function drawCard() {
+      const card = cards[Math.floor(Math.random() * cards.length)];
+      document.getElementById('cardTitle').innerText = card.title;
+      document.getElementById('cardDesc').innerText = card.desc;
+      document.getElementById('cardResult').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
