@@ -102,6 +102,12 @@
       padding: 15px;
       margin-bottom: 15px;
       border: 1px solid var(--border-color);
+      transition: transform 0.2s, opacity 0.2s;
+    }
+
+    .card.dragging {
+      opacity: 0.4;
+      border: 2px dashed var(--accent-color);
     }
 
     .card-header {
@@ -111,14 +117,31 @@
       margin-bottom: 12px;
     }
 
+    .card-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .btn-move {
+      background-color: #2a2a32;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
     .btn-delete {
       background-color: transparent;
       color: var(--danger-color);
       border: 1px solid var(--danger-color);
-      padding: 4px 10px;
-      border-radius: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 0.8rem;
       cursor: pointer;
+      margin-left: 6px;
     }
 
     .input-group {
@@ -264,30 +287,30 @@
     <!-- キャラクタータブ -->
     <div id="tab-characters" class="tab-content active">
       <button class="btn-add" onclick="addCharacter()">＋ キャラクターを追加</button>
-      <div id="character-list"></div>
+      <div id="character-list" class="card-container" data-type="characters"></div>
     </div>
 
     <!-- 章プロットタブ -->
     <div id="tab-chapters" class="tab-content">
       <button class="btn-add" onclick="addChapter()">＋ 章を追加</button>
-      <div id="chapter-list"></div>
+      <div id="chapter-list" class="card-container" data-type="chapters"></div>
     </div>
 
     <!-- エピソードタブ -->
     <div id="tab-episodes" class="tab-content">
       <button class="btn-add" onclick="addEpisode()">＋ エピソードを追加</button>
-      <div id="episode-list"></div>
+      <div id="episode-list" class="card-container" data-type="episodes"></div>
     </div>
   </main>
 
   <nav>
-    <button class="nav-item active" onclick="switchTab('characters')">
+    <button class="nav-item active" onclick="switchTab('characters', this)">
       👤 キャラ
     </button>
-    <button class="nav-item" onclick="switchTab('chapters')">
+    <button class="nav-item" onclick="switchTab('chapters', this)">
       📖 章プロット
     </button>
-    <button class="nav-item" onclick="switchTab('episodes')">
+    <button class="nav-item" onclick="switchTab('episodes', this)">
       📌 エピソード
     </button>
   </nav>
@@ -343,18 +366,33 @@
         saveData();
       }
       render();
+      setupDragAndDrop();
     }
 
     function saveData() {
       localStorage.setItem('storycraft_lite_data', JSON.stringify(appData));
     }
 
-    function switchTab(tabName) {
+    function switchTab(tabName, element) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
       document.getElementById(`tab-${tabName}`).classList.add('active');
-      event.currentTarget.classList.add('active');
+      element.classList.add('active');
+    }
+
+    // 順序変更関数
+    function moveItem(type, index, direction) {
+      const list = appData[type];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= list.length) return;
+
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+
+      saveData();
+      render();
     }
 
     // キャラ操作
@@ -422,13 +460,20 @@
         listEl.innerHTML = '<div class="empty-state">キャラがありません</div>';
         return;
       }
-      appData.characters.forEach(char => {
+      appData.characters.forEach((char, index) => {
         const card = document.createElement('div');
         card.className = 'card';
+        card.draggable = true;
+        card.dataset.index = index;
+        card.dataset.id = char.id;
         card.innerHTML = `
           <div class="card-header">
-            <span style="font-size:0.85rem; color:var(--text-sub);">キャラカード</span>
-            <button class="btn-delete" onclick="deleteCharacter(${char.id})">削除</button>
+            <span style="font-size:0.85rem; color:var(--text-sub);">☰ キャラ #${index + 1}</span>
+            <div class="card-controls">
+              <button class="btn-move" onclick="moveItem('characters', ${index}, -1)">▲</button>
+              <button class="btn-move" onclick="moveItem('characters', ${index}, 1)">▼</button>
+              <button class="btn-delete" onclick="deleteCharacter(${char.id})">削除</button>
+            </div>
           </div>
           <div class="input-group"><label>名前</label><input type="text" value="${char.name || ''}" placeholder="例: アキラ" oninput="updateCharacter(${char.id}, 'name', this.value)"></div>
           <div class="input-group"><label>役職・立場</label><input type="text" value="${char.role || ''}" placeholder="例: 主人公" oninput="updateCharacter(${char.id}, 'role', this.value)"></div>
@@ -445,13 +490,20 @@
         listEl.innerHTML = '<div class="empty-state">章がありません</div>';
         return;
       }
-      appData.chapters.forEach(chap => {
+      appData.chapters.forEach((chap, index) => {
         const card = document.createElement('div');
         card.className = 'card';
+        card.draggable = true;
+        card.dataset.index = index;
+        card.dataset.id = chap.id;
         card.innerHTML = `
           <div class="card-header">
-            <span style="font-size:0.85rem; color:var(--text-sub);">章カード</span>
-            <button class="btn-delete" onclick="deleteChapter(${chap.id})">削除</button>
+            <span style="font-size:0.85rem; color:var(--text-sub);">☰ 章 #${index + 1}</span>
+            <div class="card-controls">
+              <button class="btn-move" onclick="moveItem('chapters', ${index}, -1)">▲</button>
+              <button class="btn-move" onclick="moveItem('chapters', ${index}, 1)">▼</button>
+              <button class="btn-delete" onclick="deleteChapter(${chap.id})">削除</button>
+            </div>
           </div>
           <div class="input-group"><label>章タイトル</label><input type="text" value="${chap.title || ''}" placeholder="例: 第1章 旅立ち" oninput="updateChapter(${chap.id}, 'title', this.value)"></div>
           <div class="input-group"><label>あらすじ</label><textarea placeholder="内容を入力..." oninput="updateChapter(${chap.id}, 'plot', this.value)">${chap.plot || ''}</textarea></div>
@@ -467,13 +519,20 @@
         listEl.innerHTML = '<div class="empty-state">エピソードがありません</div>';
         return;
       }
-      appData.episodes.forEach(ep => {
+      appData.episodes.forEach((ep, index) => {
         const card = document.createElement('div');
         card.className = 'card';
+        card.draggable = true;
+        card.dataset.index = index;
+        card.dataset.id = ep.id;
         card.innerHTML = `
           <div class="card-header">
-            <span style="font-size:0.85rem; color:var(--text-sub);">エピソードカード</span>
-            <button class="btn-delete" onclick="deleteEpisode(${ep.id})">削除</button>
+            <span style="font-size:0.85rem; color:var(--text-sub);">☰ エピソード #${index + 1}</span>
+            <div class="card-controls">
+              <button class="btn-move" onclick="moveItem('episodes', ${index}, -1)">▲</button>
+              <button class="btn-move" onclick="moveItem('episodes', ${index}, 1)">▼</button>
+              <button class="btn-delete" onclick="deleteEpisode(${ep.id})">削除</button>
+            </div>
           </div>
           <div class="input-group"><label>起こる出来事</label><input type="text" value="${ep.title || ''}" placeholder="例: ヒロインと出会う" oninput="updateEpisode(${ep.id}, 'title', this.value)"></div>
           <div class="input-group"><label>割り当てる章</label><input type="text" value="${ep.chapter || ''}" placeholder="例: 第1章 / 未定" oninput="updateEpisode(${ep.id}, 'chapter', this.value)"></div>
@@ -481,6 +540,59 @@
         `;
         listEl.appendChild(card);
       });
+    }
+
+    // ドラッグ＆ドロップ実装
+    function setupDragAndDrop() {
+      document.querySelectorAll('.card-container').forEach(container => {
+        let draggedItem = null;
+
+        container.addEventListener('dragstart', e => {
+          if (e.target.classList.contains('card')) {
+            draggedItem = e.target;
+            e.target.classList.add('dragging');
+          }
+        });
+
+        container.addEventListener('dragend', e => {
+          if (e.target.classList.contains('card')) {
+            e.target.classList.remove('dragging');
+            
+            // 順序の再構築
+            const type = container.dataset.type;
+            const newOrderIds = Array.from(container.querySelectorAll('.card')).map(card => Number(card.dataset.id));
+            
+            appData[type].sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+            saveData();
+            render();
+          }
+        });
+
+        container.addEventListener('dragover', e => {
+          e.preventDefault();
+          const afterElement = getDragAfterElement(container, e.clientY);
+          if (draggedItem) {
+            if (afterElement == null) {
+              container.appendChild(draggedItem);
+            } else {
+              container.insertBefore(draggedItem, afterElement);
+            }
+          }
+        });
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     // テキスト書き出し処理
