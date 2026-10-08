@@ -124,7 +124,7 @@
 
     textarea {
       resize: vertical;
-      min-height: 80px;
+      min-height: 70px;
       line-height: 1.5;
     }
 
@@ -153,7 +153,7 @@
       color: var(--text-sub);
       background: none;
       border: none;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       gap: 4px;
     }
@@ -189,41 +189,52 @@
       <button class="btn-add" onclick="addChapter()">＋ 章を追加</button>
       <div id="chapter-list"></div>
     </div>
+
+    <!-- エピソードタブ -->
+    <div id="tab-episodes" class="tab-content">
+      <button class="btn-add" onclick="addEpisode()">＋ エピソードを追加</button>
+      <div id="episode-list"></div>
+    </div>
   </main>
 
   <nav>
     <button class="nav-item active" onclick="switchTab('characters')">
-      👤 キャラクター
+      👤 キャラ
     </button>
     <button class="nav-item" onclick="switchTab('chapters')">
       📖 章プロット
     </button>
+    <button class="nav-item" onclick="switchTab('episodes')">
+      📌 エピソード
+    </button>
   </nav>
 
   <script>
-    // データモデル
     let appData = {
       characters: [],
-      chapters: []
+      chapters: [],
+      episodes: []
     };
 
-    // 初期化（LocalStorageからの読み込み）
     function init() {
       const savedData = localStorage.getItem('storycraft_lite_data');
       if (savedData) {
         try {
           appData = JSON.parse(savedData);
+          if (!appData.episodes) appData.episodes = [];
         } catch (e) {
           console.error('Failed to parse stored data');
         }
       } else {
-        // 初期サンプルデータ
         appData = {
           characters: [
-            { id: Date.now(), name: "主人公 (アキラ)", role: "主人公", memo: "気弱だが正義感が強い。物語を通して勇敢へと成長する。" }
+            { id: Date.now(), name: "主人公 (アキラ)", role: "主人公", memo: "気弱だが正義感が強い。" }
           ],
           chapters: [
-            { id: Date.now() + 1, title: "第1章 接触と予兆", plot: "平穏な日常に突如現れた謎の男。主人公は巻き込まれていく。" }
+            { id: Date.now() + 1, title: "第1章 接触と予兆", plot: "平穏な日常に突如現れた謎の男。" }
+          ],
+          episodes: [
+            { id: Date.now() + 2, title: "ヒロインとヒーローが出会う", chapter: "第1章", memo: "雨の日のバス停にて" }
           ]
         };
         saveData();
@@ -231,12 +242,10 @@
       render();
     }
 
-    // 保存処理
     function saveData() {
       localStorage.setItem('storycraft_lite_data', JSON.stringify(appData));
     }
 
-    // タブ切り替え
     function switchTab(tabName) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -245,78 +254,71 @@
       event.currentTarget.classList.add('active');
     }
 
-    // キャラクター操作
+    // キャラ操作
     function addCharacter() {
-      const newChar = {
-        id: Date.now(),
-        name: "",
-        role: "",
-        memo: ""
-      };
-      appData.characters.push(newChar);
+      appData.characters.push({ id: Date.now(), name: "", role: "", memo: "" });
       saveData();
       renderCharacters();
     }
-
     function updateCharacter(id, field, value) {
       const char = appData.characters.find(c => c.id === id);
-      if (char) {
-        char[field] = value;
-        saveData();
-      }
+      if (char) { char[field] = value; saveData(); }
     }
-
     function deleteCharacter(id) {
-      if (confirm('このキャラクターを削除しますか？')) {
+      if (confirm('削除しますか？')) {
         appData.characters = appData.characters.filter(c => c.id !== id);
-        saveData();
-        renderCharacters();
+        saveData(); renderCharacters();
       }
     }
 
-    // 章プロット操作
+    // 章操作
     function addChapter() {
-      const newChap = {
-        id: Date.now(),
-        title: `第${appData.chapters.length + 1}章 `,
-        plot: ""
-      };
-      appData.chapters.push(newChap);
+      appData.chapters.push({ id: Date.now(), title: `第${appData.chapters.length + 1}章 `, plot: "" });
       saveData();
       renderChapters();
     }
-
     function updateChapter(id, field, value) {
       const chap = appData.chapters.find(c => c.id === id);
-      if (chap) {
-        chap[field] = value;
-        saveData();
-      }
+      if (chap) { chap[field] = value; saveData(); }
     }
-
     function deleteChapter(id) {
-      if (confirm('この章を削除しますか？')) {
+      if (confirm('削除しますか？')) {
         appData.chapters = appData.chapters.filter(c => c.id !== id);
-        saveData();
-        renderChapters();
+        saveData(); renderChapters();
       }
     }
 
-    // 画面描写
+    // エピソード操作
+    function addEpisode() {
+      appData.episodes.push({ id: Date.now(), title: "", chapter: "未定", memo: "" });
+      saveData();
+      renderEpisodes();
+    }
+    function updateEpisode(id, field, value) {
+      const ep = appData.episodes.find(e => e.id === id);
+      if (ep) { ep[field] = value; saveData(); }
+    }
+    function deleteEpisode(id) {
+      if (confirm('削除しますか？')) {
+        appData.episodes = appData.episodes.filter(e => e.id !== id);
+        saveData(); renderEpisodes();
+      }
+    }
+
+    // 描画
     function render() {
       renderCharacters();
       renderChapters();
+      renderEpisodes();
     }
 
     function renderCharacters() {
       const listEl = document.getElementById('character-list');
       listEl.innerHTML = '';
-
       if (appData.characters.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">キャラクターが登録されていません。<br>「＋ キャラクターを追加」を押して追加してください。</div>';
+        listEl.innerHTML = '<div class="empty-state">キャラがありません</div>';
         return;
       }
-
       appData.characters.forEach(char => {
         const card = document.createElement('div');
         card.className = 'card';
@@ -325,18 +327,9 @@
             <span style="font-size:0.85rem; color:var(--text-sub);">キャラカード</span>
             <button class="btn-delete" onclick="deleteCharacter(${char.id})">削除</button>
           </div>
-          <div class="input-group">
-            <label>名前</label>
-            <input type="text" value="${char.name || ''}" placeholder="例: アキラ" oninput="updateCharacter(${char.id}, 'name', this.value)">
-          </div>
-          <div class="input-group">
-            <label>役職・立場</label>
-            <input type="text" value="${char.role || ''}" placeholder="例: 主人公 / 相棒 / 宿敵" oninput="updateCharacter(${char.id}, 'role', this.value)">
-          </div>
-          <div class="input-group">
-            <label>性格・メモ・変化</label>
-            <textarea placeholder="例: 最初は弱気だが、仲間を守るために立ち上がる" oninput="updateCharacter(${char.id}, 'memo', this.value)">${char.memo || ''}</textarea>
-          </div>
+          <div class="input-group"><label>名前</label><input type="text" value="${char.name || ''}" placeholder="例: アキラ" oninput="updateCharacter(${char.id}, 'name', this.value)"></div>
+          <div class="input-group"><label>役職・立場</label><input type="text" value="${char.role || ''}" placeholder="例: 主人公" oninput="updateCharacter(${char.id}, 'role', this.value)"></div>
+          <div class="input-group"><label>性格・メモ</label><textarea placeholder="メモを入力..." oninput="updateCharacter(${char.id}, 'memo', this.value)">${char.memo || ''}</textarea></div>
         `;
         listEl.appendChild(card);
       });
@@ -345,12 +338,10 @@
     function renderChapters() {
       const listEl = document.getElementById('chapter-list');
       listEl.innerHTML = '';
-
       if (appData.chapters.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">章プロットが登録されていません。<br>「＋ 章を追加」を押して追加してください。</div>';
+        listEl.innerHTML = '<div class="empty-state">章がありません</div>';
         return;
       }
-
       appData.chapters.forEach(chap => {
         const card = document.createElement('div');
         card.className = 'card';
@@ -359,20 +350,36 @@
             <span style="font-size:0.85rem; color:var(--text-sub);">章カード</span>
             <button class="btn-delete" onclick="deleteChapter(${chap.id})">削除</button>
           </div>
-          <div class="input-group">
-            <label>章タイトル</label>
-            <input type="text" value="${chap.title || ''}" placeholder="例: 第1章 旅立ち" oninput="updateChapter(${chap.id}, 'title', this.value)">
-          </div>
-          <div class="input-group">
-            <label>起こる出来事・あらすじ</label>
-            <textarea placeholder="この章で何が起きるかを入力..." oninput="updateChapter(${chap.id}, 'plot', this.value)">${chap.plot || ''}</textarea>
-          </div>
+          <div class="input-group"><label>章タイトル</label><input type="text" value="${chap.title || ''}" placeholder="例: 第1章 旅立ち" oninput="updateChapter(${chap.id}, 'title', this.value)"></div>
+          <div class="input-group"><label>あらすじ</label><textarea placeholder="内容を入力..." oninput="updateChapter(${chap.id}, 'plot', this.value)">${chap.plot || ''}</textarea></div>
         `;
         listEl.appendChild(card);
       });
     }
 
-    // 起動
+    function renderEpisodes() {
+      const listEl = document.getElementById('episode-list');
+      listEl.innerHTML = '';
+      if (appData.episodes.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">エピソードがありません</div>';
+        return;
+      }
+      appData.episodes.forEach(ep => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <span style="font-size:0.85rem; color:var(--text-sub);">エピソードカード</span>
+            <button class="btn-delete" onclick="deleteEpisode(${ep.id})">削除</button>
+          </div>
+          <div class="input-group"><label>起こる出来事</label><input type="text" value="${ep.title || ''}" placeholder="例: ヒロインと出会う" oninput="updateEpisode(${ep.id}, 'title', this.value)"></div>
+          <div class="input-group"><label>割り当てる章</label><input type="text" value="${ep.chapter || ''}" placeholder="例: 第1章 / 未定" oninput="updateEpisode(${ep.id}, 'chapter', this.value)"></div>
+          <div class="input-group"><label>詳細・メモ</label><textarea placeholder="詳細を入力..." oninput="updateEpisode(${ep.id}, 'memo', this.value)">${ep.memo || ''}</textarea></div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
     init();
   </script>
 </body>
