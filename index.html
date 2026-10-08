@@ -10,6 +10,7 @@
       --card-bg: #1e1e24;
       --input-bg: #2a2a32;
       --accent-color: #6366f1;
+      --accent-hover: #4f46e5;
       --danger-color: #ef4444;
       --text-main: #f1f5f9;
       --text-sub: #94a3b8;
@@ -34,14 +35,27 @@
 
     header {
       background-color: #0f172a;
-      padding: 15px 20px;
-      text-align: center;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid var(--border-color);
     }
 
     header h1 {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       color: var(--text-main);
+    }
+
+    .btn-export-header {
+      background-color: #334155;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     main {
@@ -169,12 +183,74 @@
       padding: 40px 20px;
       font-size: 0.9rem;
     }
+
+    /* 出力モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .modal-content h2 {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+
+    .modal-content textarea {
+      flex: 1;
+      min-height: 200px;
+      margin-bottom: 15px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-copy { background-color: var(--accent-color); color: white; }
+    .btn-download { background-color: #10b981; color: white; }
+    .btn-close { background-color: #475569; color: white; }
   </style>
 </head>
 <body>
 
   <header>
     <h1>StoryCraft Lite</h1>
+    <button class="btn-export-header" onclick="openExportModal()">📋 書き出し</button>
   </header>
 
   <main>
@@ -208,6 +284,19 @@
       📌 エピソード
     </button>
   </nav>
+
+  <!-- テキスト出力用モーダル -->
+  <div id="export-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>📋 プロットテキスト出力</h2>
+      <textarea id="export-text" readonly></textarea>
+      <div class="modal-actions">
+        <button class="modal-btn btn-copy" onclick="copyExportText()">全コピー</button>
+        <button class="modal-btn btn-download" onclick="downloadExportText()">保存 (.txt)</button>
+        <button class="modal-btn btn-close" onclick="closeExportModal()">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     let appData = {
@@ -378,6 +467,80 @@
         `;
         listEl.appendChild(card);
       });
+    }
+
+    // テキスト書き出し処理
+    function generateExportText() {
+      let text = "========================================\n";
+      text += " StoryCraft Lite - プロット設定資料\n";
+      text += "========================================\n\n";
+
+      text += "【 👤 キャラクター一覧 】\n";
+      if (appData.characters.length === 0) {
+        text += "（登録なし）\n";
+      } else {
+        appData.characters.forEach((c, index) => {
+          text += `${index + 1}. ${c.name || '（名称未設定）'} [役職: ${c.role || 'なし'}]\n`;
+          if (c.memo) text += `   メモ: ${c.memo.replace(/\n/g, '\n   ')}\n`;
+          text += "\n";
+        });
+      }
+
+      text += "----------------------------------------\n";
+      text += "【 📖 章プロット一覧 】\n";
+      if (appData.chapters.length === 0) {
+        text += "（登録なし）\n";
+      } else {
+        appData.chapters.forEach((ch, index) => {
+          text += `■ ${ch.title || '（タイトル未設定）'}\n`;
+          if (ch.plot) text += `   あらすじ:\n   ${ch.plot.replace(/\n/g, '\n   ')}\n`;
+          text += "\n";
+        });
+      }
+
+      text += "----------------------------------------\n";
+      text += "【 📌 エピソード一覧 】\n";
+      if (appData.episodes.length === 0) {
+        text += "（登録なし）\n";
+      } else {
+        appData.episodes.forEach((ep, index) => {
+          text += `・${ep.title || '（出来事未設定）'} [配置: ${ep.chapter || '未定'}]\n`;
+          if (ep.memo) text += `   詳細: ${ep.memo.replace(/\n/g, '\n   ')}\n`;
+          text += "\n";
+        });
+      }
+
+      return text;
+    }
+
+    function openExportModal() {
+      const exportArea = document.getElementById('export-text');
+      exportArea.value = generateExportText();
+      document.getElementById('export-modal').classList.add('active');
+    }
+
+    function closeExportModal() {
+      document.getElementById('export-modal').classList.remove('active');
+    }
+
+    function copyExportText() {
+      const exportArea = document.getElementById('export-text');
+      exportArea.select();
+      navigator.clipboard.writeText(exportArea.value).then(() => {
+        alert('クリップボードにコピーしました！');
+      }).catch(() => {
+        alert('コピーに失敗しました。手動で選択してコピーしてください。');
+      });
+    }
+
+    function downloadExportText() {
+      const text = generateExportText();
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `plot_export_${new Date().toISOString().slice(0,10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
 
     init();
